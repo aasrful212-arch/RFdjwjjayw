@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08090d">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="RGB Studio — host HTML projects instantly and get a live shareable URL.">
+<title>RGB Studio — Live HTML Hosting</title>
+<style>
+/* ============================================================
+   RESET & THEME TOKENS
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body,h1,h2,p{margin:0}
+img{display:block;max-width:100%}
+button,input,textarea{font:inherit;color:inherit}
+:root{
+  --bg:#08090d;
+  --card:#0e1117;
+  --card-2:#131820;
+  --line:#1e2531;
+  --text:#e6eaf2;
+  --muted:#8a94a6;
+  --dim:#5b6577;
+  --accent:#22d3ee;
+  --ok:#34d399;
+  --err:#f87171;
+  --warn:#fbbf24;
+  --r:18px;
+  --r-sm:12px;
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(500px 340px at 10% -5%, rgba(34,211,238,.08), transparent 65%),
+    radial-gradient(500px 340px at 92% 5%, rgba(168,85,247,.07), transparent 65%);
+}
+[hidden]{display:none !important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:calc(var(--safe-t) + 10px) 14px 10px;
+  background:rgba(8,9,13,.94);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px;letter-spacing:-.2px}
+.brand .dot{
+  width:15px;height:15px;border-radius:50%;
+  background:conic-gradient(from 0deg,#ff0055,#ff7a00,#ffd400,#2ee86b,#00d4ff,#4d6bff,#a855f7,#ff00c8,#ff0055);
+  animation:spin 6s linear infinite;
+  box-shadow:0 0 10px rgba(34,211,238,.4);
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.brand em{font-style:normal;color:var(--accent)}
+body.no-rgb .brand .dot{animation:none}
+
+.user-chip{
+  display:flex;align-items:center;gap:8px;
+  background:var(--card-2);border:1px solid var(--line);
+  border-radius:99px;padding:4px 4px 4px 8px;max-width:64vw;
+}
+.user-chip .av{
+  width:28px;height:28px;border-radius:50%;object-fit:cover;flex:0 0 auto;
+  display:grid;place-items:center;font-weight:800;font-size:13px;color:#04060a;
+  background:linear-gradient(135deg,var(--accent),#a855f7);
+}
+.user-chip .nm{
+  font-size:12.5px;color:var(--muted);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:90px;
+}
+.user-chip .exit{min-height:30px;padding:4px 10px;font-size:12px}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.wrap{
+  width:100%;max-width:720px;margin:0 auto;
+  padding:16px 12px calc(48px + var(--safe-b));
+  display:flex;flex-direction:column;gap:14px;
+}
+.app-shell{display:flex;flex-direction:column;gap:14px}
+
+/* ============================================================
+   RGB CARD — animated gradient border (GPU-friendly)
+   ============================================================ */
+.rgb{
+  position:relative;
+  border-radius:var(--r);
+  padding:2px;
+  background:linear-gradient(90deg,
+    #ff0055 0%, #ff7a00 8%, #ffd400 16%, #2ee86b 25%,
+    #00d4ff 33%, #4d6bff 42%, #a855f7 50%, #ff00c8 58%,
+    #ff0055 67%, #ff7a00 75%, #ffd400 83%, #2ee86b 92%, #00d4ff 100%);
+  background-size:200% 200%;
+  animation:rgb 9s ease infinite;
+  will-change:background-position;
+}
+@keyframes rgb{
+  0%   {background-position:0% 50%}
+  50%  {background-position:100% 50%}
+  100% {background-position:0% 50%}
+}
+body.no-rgb .rgb{animation:none;background-position:0% 50%}
+.rgb > .inner{
+  background:var(--card);
+  border-radius:calc(var(--r) - 2px);
+  padding:16px;
+}
+
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.sec-head h2{font-size:15.5px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+.tag{
+  font-size:10px;font-weight:800;letter-spacing:1.2px;
+  color:#04060a;background:linear-gradient(135deg,var(--accent),#a855f7);
+  padding:3px 8px;border-radius:99px;white-space:nowrap;
+}
+
+/* ============================================================
+   FORMS & BUTTONS
+   ============================================================ */
+.fld{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:.2px}
+.fld + .fld{margin-top:11px}
+input,textarea{
+  width:100%;background:#0a0d13;border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:12px 13px;
+  font-size:16px;
+  outline:none;transition:border-color .15s,box-shadow .15s;
+}
+textarea{
+  font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  min-height:170px;resize:vertical;line-height:1.55;
+}
+input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,211,238,.13)}
+input:disabled{opacity:.55;cursor:not-allowed}
+input::placeholder,textarea::placeholder{color:#4a5466}
+input[readonly]{cursor:text}
+
+.pin-input{
+  letter-spacing:14px;
+  font-size:22px;
+  text-align:center;
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  padding-left:14px;
+}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:44px;padding:11px 15px;
+  border:1px solid var(--line);background:var(--card-2);color:var(--text);
+  border-radius:var(--r-sm);font-weight:650;font-size:14px;
+  cursor:pointer;touch-action:manipulation;
+  transition:transform .1s,background .15s,border-color .15s;
+  -webkit-user-select:none;user-select:none;
+}
+.btn:active{transform:scale(.975)}
+.btn:disabled{opacity:.55;pointer-events:none}
+.btn-primary{
+  border:0;color:#04060a;
+  background:linear-gradient(120deg,#22d3ee,#60a5fa,#a855f7,#ec4899,#22d3ee);
+  background-size:250% 100%;
+  animation:slide 9s linear infinite;
+  box-shadow:0 6px 22px -12px rgba(34,211,238,.9);
+}
+body.no-rgb .btn-primary{animation:none;background:linear-gradient(120deg,#22d3ee,#a855f7)}
+@keyframes slide{to{background-position:250% 0}}
+.btn-ghost{background:transparent}
+.btn-danger{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.3);color:#fca5a5}
+.btn-full{width:100%}
+.btn-sm{min-height:36px;padding:7px 11px;font-size:12.5px;border-radius:10px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn-row .btn{flex:1;min-width:120px}
+
+/* ============================================================
+   AUTH VIEW
+   ============================================================ */
+.auth-shell{padding-top:4vh}
+.auth-hero{text-align:center;margin-bottom:18px}
+.orb{
+  width:66px;height:66px;border-radius:22px;margin:0 auto 12px;
+  background:conic-gradient(from 0deg,#ff0055,#ff7a00,#ffd400,#2ee86b,#00d4ff,#4d6bff,#a855f7,#ff00c8,#ff0055);
+  display:grid;place-items:center;
+  box-shadow:0 0 34px -6px rgba(34,211,238,.5);
+  animation:spin 8s linear infinite;
+}
+body.no-rgb .orb{animation:none}
+.orb::after{content:"";width:50px;height:50px;border-radius:17px;background:var(--card)}
+.auth-hero h1{font-size:21px;font-weight:800;letter-spacing:-.4px}
+.auth-hero p{color:var(--muted);font-size:13px;margin-top:6px}
+.tabs{display:flex;gap:4px;background:#0a0d13;border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:16px}
+.tab{
+  flex:1;min-height:42px;border:0;background:transparent;border-radius:10px;
+  font-weight:650;font-size:14px;color:var(--muted);cursor:pointer;
+  transition:background .15s,color .15s;touch-action:manipulation;
+}
+.tab[aria-selected="true"]{background:#1a2130;color:#fff}
+
+/* ============================================================
+   AVATAR
+   ============================================================ */
+.profile-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.avatar-box{position:relative;width:88px;height:88px;flex:0 0 auto}
+.ring{
+  width:100%;height:100%;border-radius:50%;padding:3px;
+  background:conic-gradient(from 0deg,#ff0055,#ff7a00,#ffd400,#2ee86b,#00d4ff,#4d6bff,#a855f7,#ff00c8,#ff0055);
+  animation:spin 8s linear infinite;
+}
+body.no-rgb .ring{animation:none}
+.ring > *{
+  width:100%;height:100%;border-radius:50%;object-fit:cover;
+  border:3px solid var(--card);display:block;
+}
+.avatar-letter{
+  display:grid;place-items:center;font-size:32px;font-weight:800;color:#04060a;
+  background:linear-gradient(135deg,var(--accent),#a855f7);
+}
+.cam{
+  position:absolute;right:-3px;bottom:-3px;width:34px;height:34px;border-radius:50%;
+  border:2px solid var(--card);background:linear-gradient(135deg,var(--accent),#a855f7);
+  color:#04060a;font-size:15px;display:grid;place-items:center;cursor:pointer;
+  touch-action:manipulation;
+}
+.profile-fields{flex:1;min-width:200px}
+
+/* ============================================================
+   DROPZONE
+   ============================================================ */
+.drop{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  border:2px dashed #2a3242;border-radius:var(--r-sm);
+  padding:26px 14px;text-align:center;color:var(--muted);
+  cursor:pointer;transition:border-color .15s,background .15s;
+  touch-action:manipulation;
+}
+.drop:active,.drop.over{border-color:var(--accent);background:rgba(34,211,238,.05);color:var(--text)}
+.drop .ico{font-size:27px;line-height:1}
+.drop b{font-size:14px;color:var(--text)}
+.drop small{font-size:11.5px;color:var(--dim)}
+
+/* ============================================================
+   LINK BOX
+   ============================================================ */
+.linkbox{
+  display:flex;gap:8px;align-items:center;
+  background:#0a0d13;border:1px solid var(--line);
+  border-radius:var(--r-sm);padding:6px 6px 6px 12px;
+}
+.linkbox input{
+  border:0;background:transparent;padding:8px 0;box-shadow:none;
+  font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace;
+  color:#7dd3fc;min-width:0;
+}
+.linkbox input:focus{box-shadow:none}
+.meta-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:11.5px;color:var(--dim)}
+.pill{padding:3px 9px;border-radius:99px;background:#151b26;border:1px solid var(--line)}
+.pill.ok{color:var(--ok);border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.07)}
+.pill.warn{color:var(--warn);border-color:rgba(251,191,36,.3);background:rgba(251,191,36,.07)}
+.pill.err{color:var(--err);border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.07)}
+
+/* ============================================================
+   PROJECTS LIST
+   ============================================================ */
+.plist{display:flex;flex-direction:column;gap:9px}
+.pitem{
+  display:flex;gap:11px;align-items:center;
+  background:#0a0d13;border:1px solid var(--line);border-radius:14px;padding:11px;
+}
+.pthumb{
+  width:42px;height:42px;flex:0 0 auto;border-radius:11px;
+  display:grid;place-items:center;font-size:18px;
+  background:linear-gradient(135deg,rgba(34,211,238,.14),rgba(168,85,247,.14));
+  border:1px solid rgba(255,255,255,.06);
+}
+.pmeta{flex:1;min-width:0}
+.pmeta b{display:block;font-size:13.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pmeta span{font-size:11px;color:var(--dim)}
+.pacts{display:flex;gap:5px;flex:0 0 auto}
+
+/* ============================================================
+   PREVIEW
+   ============================================================ */
+.dev-toggle{display:flex;gap:4px;background:#0a0d13;border:1px solid var(--line);border-radius:11px;padding:3px}
+.dev-toggle button{
+  border:0;background:transparent;color:var(--muted);
+  font-size:12px;font-weight:650;padding:7px 11px;border-radius:8px;
+  cursor:pointer;touch-action:manipulation;
+}
+.dev-toggle button[aria-pressed="true"]{background:rgba(34,211,238,.15);color:#fff}
+.frame-shell{display:flex;justify-content:center;margin-top:12px}
+.frame{
+  width:100%;height:340px;background:#fff;
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  transition:width .2s ease;
+}
+.frame.mobile{width:390px;max-width:100%}
+.frame iframe{width:100%;height:100%;border:0;display:block;background:#fff}
+
+/* ============================================================
+   APPEARANCE
+   ============================================================ */
+.swatches{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.swatch{
+  width:38px;height:38px;border-radius:50%;border:2px solid transparent;
+  cursor:pointer;touch-action:manipulation;transition:transform .12s;
+}
+.swatch[aria-pressed="true"]{border-color:#fff;transform:scale(1.08)}
+.switch{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:#0a0d13;border:1px solid var(--line);border-radius:var(--r-sm);
+  padding:12px 13px;margin-top:12px;
+}
+.switch small{display:block;color:var(--dim);font-size:11px;margin-top:2px}
+.knob{
+  position:relative;width:48px;height:27px;flex:0 0 auto;border-radius:99px;
+  background:#242c3a;border:0;cursor:pointer;transition:background .2s;
+  touch-action:manipulation;
+}
+.knob::after{
+  content:"";position:absolute;top:3px;left:3px;
+  width:21px;height:21px;border-radius:50%;background:#8a94a6;
+  transition:left .2s,background .2s;
+}
+.knob[aria-checked="true"]{background:linear-gradient(135deg,var(--accent),#a855f7)}
+.knob[aria-checked="true"]::after{left:24px;background:#fff}
+
+/* ============================================================
+   STATS
+   ============================================================ */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px}
+.stat{background:#0a0d13;border:1px solid var(--line);border-radius:14px;padding:13px}
+.stat b{
+  display:block;font-size:20px;font-weight:800;letter-spacing:-.4px;
+  background:linear-gradient(90deg,var(--accent),#a855f7);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.stat span{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.9px}
+
+/* ============================================================
+   MISC
+   ============================================================ */
+.note{font-size:11.5px;color:var(--dim);line-height:1.6;margin-top:10px}
+.empty{
+  text-align:center;color:var(--dim);font-size:13px;
+  padding:24px 12px;border:1px dashed #202839;border-radius:14px;
+}
+.msg{font-size:12.5px;margin-top:12px;text-align:center;min-height:17px}
+.msg.err{color:#fca5a5}
+.msg.ok{color:#6ee7b7}
+.divider{height:1px;background:var(--line);margin:16px 0}
+.footnote{text-align:center;color:#39404f;font-size:11px;padding-top:6px}
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+.toasts{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(16px + var(--safe-b));z-index:9000;
+  width:calc(100% - 24px);max-width:380px;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;
+}
+.toast{
+  background:rgba(19,24,32,.97);
+  border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:12px;padding:11px 14px;font-size:13px;font-weight:550;
+  box-shadow:0 10px 28px -12px rgba(0,0,0,.9);
+  animation:tin .22s cubic-bezier(.2,.9,.3,1.3);
+}
+.toast.ok{border-left-color:var(--ok)}
+.toast.err{border-left-color:var(--err)}
+.toast.warn{border-left-color:var(--warn)}
+.toast.out{animation:tout .2s forwards}
+@keyframes tin{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes tout{to{opacity:0;transform:translateY(8px) scale(.98)}}
+
+/* ============================================================
+   VIEWER (shared project overlay)
+   ============================================================ */
+.viewer{position:fixed;inset:0;z-index:9500;background:#000;display:flex;flex-direction:column}
+.viewer-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:calc(var(--safe-t) + 9px) 12px 9px;
+  background:#0b0e14;border-bottom:1px solid var(--line);flex:0 0 auto;
+}
+.viewer-bar b{font-size:13px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.viewer-acts{display:flex;gap:6px;flex:0 0 auto}
+.viewer iframe{flex:1;width:100%;border:0;background:#fff}
+
+/* ============================================================
+   RESPONSIVE / MOTION
+   ============================================================ */
+@media (max-width:380px){
+  .rgb > .inner{padding:14px}
+  .auth-hero h1{font-size:19px}
+  .pin-input{letter-spacing:12px;font-size:20px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== TOP BAR ===================== -->
+<header class="topbar">
+  <div class="brand"><span class="dot"></span>RGB<em>Studio</em></div>
+  <div id="topbarRight"></div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===================== AUTH VIEW ===================== -->
+  <section id="authView" class="auth-shell">
+    <div class="auth-hero">
+      <div class="orb"></div>
+      <h1>Host HTML in seconds</h1>
+      <p>Upload a file, get a live URL you can open anywhere.</p>
+    </div>
+
+    <div class="rgb">
+      <div class="inner">
+        <div class="tabs" role="tablist">
+          <button class="tab" id="tabLogin" role="tab" aria-selected="true" type="button">Login</button>
+          <button class="tab" id="tabSignup" role="tab" aria-selected="false" type="button">Sign up</button>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form id="formLogin" autocomplete="on" novalidate>
+          <label class="fld">Email address
+            <input type="email" id="liEmail" placeholder="you@example.com" autocomplete="email" inputmode="email" required>
+          </label>
+          <label class="fld">4-digit PIN
+            <input type="password" id="liPin" class="pin-input" placeholder="••••" inputmode="numeric" maxlength="4" autocomplete="current-password" required>
+          </label>
+          <button class="btn btn-primary btn-full" type="submit" style="margin-top:16px">Sign in</button>
+        </form>
+
+        <!-- SIGNUP FORM -->
+        <form id="formSignup" autocomplete="on" novalidate hidden>
+          <label class="fld">Display name
+            <input type="text" id="suName" placeholder="Your name" maxlength="32" autocomplete="name">
+          </label>
+          <label class="fld">Email address
+            <input type="email" id="suEmail" placeholder="you@example.com" autocomplete="email" inputmode="email" required>
+          </label>
+          <label class="fld">Choose a 4-digit PIN
+            <input type="password" id="suPin" class="pin-input" placeholder="••••" inputmode="numeric" maxlength="4" autocomplete="new-password" required>
+          </label>
+          <label class="fld">Confirm PIN
+            <input type="password" id="suPin2" class="pin-input" placeholder="••••" inputmode="numeric" maxlength="4" autocomplete="new-password" required>
+          </label>
+          <button class="btn btn-primary btn-full" type="submit" style="margin-top:16px">Create account</button>
+        </form>
+
+        <p id="authMsg" class="msg" role="status"></p>
+      </div>
+    </div>
+
+    <p class="note" style="text-align:center">
+      🔒 Accounts live only in this browser. PINs are hashed with SHA-256 + salt before storage.
+      Nothing is ever sent to a server.
+    </p>
+  </section>
+
+  <!-- ===================== APP VIEW ===================== -->
+  <section id="appView" hidden class="app-shell">
+
+    <!-- 01 · PROFILE -->
+    <div class="rgb">
+      <div class="inner">
+        <div class="sec-head"><h2>👤 Profile</h2><span class="tag">01</span></div>
+        <div class="profile-row">
+          <div class="avatar-box">
+            <div class="ring" id="avatarRing"></div>
+            <button class="cam" id="btnAvatar" type="button" aria-label="Change profile picture">📷</button>
+            <input type="file" id="avatarInput" accept="image/*" hidden>
+          </div>
+          <div class="profile-fields">
+            <label class="fld">Display name
+              <input type="text" id="pfName" maxlength="32" placeholder="Your name">
+            </label>
+            <label class="fld">Email
+              <input type="email" id="pfEmail" disabled>
+            </label>
+            <button class="btn btn-primary btn-full" id="btnSaveProfile" type="button" style="margin-top:12px">Save profile</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 02 · UPLOAD -->
+    <div class="rgb">
+      <div class="inner">
+        <div class="sec-head"><h2>📤 Upload HTML project</h2><span class="tag">02</span></div>
+
+        <div class="drop" id="drop" role="button" tabindex="0" aria-label="Choose an HTML file">
+          <div class="ico">📁</div>
+          <b>Tap to choose an .html file</b>
+          <small>or drag &amp; drop · max 2 MB</small>
+        </div>
+        <input type="file" id="fileInput" accept=".html,.htm,text/html" hidden>
+
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="btnPaste" type="button">⌨️ Paste code instead</button>
+          <button class="btn btn-ghost" id="btnSample" type="button">✨ Load sample</button>
+        </div>
+
+        <div id="codeWrap" hidden style="margin-top:12px">
+          <textarea id="codeArea" placeholder="&lt;!DOCTYPE html&gt;&#10;&lt;html&gt;…&lt;/html&gt;" spellcheck="false"></textarea>
+        </div>
+
+        <label class="fld" style="margin-top:12px">Project name
+          <input type="text" id="projName" placeholder="My awesome page" maxlength="48">
+        </label>
+
+        <button class="btn btn-primary btn-full" id="btnPublish" type="button" style="margin-top:14px">
+          🚀 Publish &amp; generate live URL
+        </button>
+
+        <div id="pubStatus" class="note" role="status"></div>
+      </div>
+    </div>
+
+    <!-- 03 · LIVE URL -->
+    <div class="rgb">
+      <div class="inner">
+        <div class="sec-head"><h2>🔗 Your live URL</h2><span class="tag">03</span></div>
+
+        <div class="empty" id="linkEmpty">Publish a project to generate a live link.</div>
+
+        <div id="linkBox" hidden>
+          <div class="linkbox">
+            <input type="text" id="liveUrl" readonly aria-label="Live URL">
+            <button class="btn btn-sm btn-primary" id="btnCopy" type="button">Copy</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-sm" id="btnOpen" type="button">↗ Open</button>
+            <button class="btn btn-sm" id="btnShare" type="button">📲 Share</button>
+            <button class="btn btn-sm" id="btnQuick" type="button">⚡ Quick test</button>
+            <button class="btn btn-sm" id="btnDownload" type="button">⤓ Download</button>
+          </div>
+          <div class="meta-row">
+            <span class="pill" id="pillSize">—</span>
+            <span class="pill" id="pillLen">—</span>
+            <span class="pill" id="pillHost">—</span>
+          </div>
+          <p class="note" id="linkNote"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 · MY PROJECTS -->
+    <div class="rgb">
+      <div class="inner">
+        <div class="sec-head"><h2>🗂 My projects</h2><span class="tag">04</span></div>
+        <div class="plist" id="plist"></div>
+      </div>
+    </div>
+
+    <!-- 05 · LIVE PREVIEW -->
+    <div class="rgb">
+      <div class="inner">
+        <div class="sec-head">
+          <h2>👁 Live preview</h2>
+          <div class="dev-toggle">
+            <button id="devMobile" type="button" aria-pressed="true">📱 Mobile</button>
+            <button id="devDesktop" type="button" aria-pressed="false">🖥 Desktop</button>
+          </div>
+        </div>
+        <div class="empty" id="prevEmpty">Select a project to preview it here.</div>
+        <div class="frame-shell" id="prevShell" hidden>
+          <div class="frame mobile" id="prevFrame">
+            <iframe id="prevIframe" title="Project preview"
+              sandbox="allow-scripts allow-forms allow-modals allow-popups allow-pointer-lock"></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 · APPEARANCE -->
+    <div class="rgb">
+      <div class="inner">
+        <div class="sec-head"><h2>🎨 Appearance</h2><span class="tag">06</span></div>
+
+        <div style="font-size:12.5px;color:var(--muted);font-weight:600">Accent colour</div>
+        <div class="swatches" id="swatches"></div>
+
+        <div class="switch">
+          <div>
+            <strong style="font-size:13.5px">RGB animation</strong>
+            <small>Rotates border lights. Off = maximum performance.</small>
+          </div>
+          <button class="knob" id="knobAnim" role="switch" aria-checked="true" aria-label="RGB animation"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 07 · STATISTICS -->
+    <div class="rgb">
+      <div class="inner">
+        <div class="sec-head"><h2>📊 Statistics</h2><span class="tag">07</span></div>
+        <div class="stats">
+          <div class="stat"><b id="stProjects">0</b><span>Projects</span></div>
+          <div class="stat"><b id="stSize">0 KB</b><span>Total size</span></div>
+          <div class="stat"><b id="stLinks">0</b><span>Live links</span></div>
+          <div class="stat"><b id="stAge">0d</b><span>Account age</span></div>
+        </div>
+        <p class="note" id="storageNote"></p>
+      </div>
+    </div>
+
+    <!-- 08 · ACCOUNT -->
+    <div class="rgb">
+      <div class="inner">
+        <div class="sec-head"><h2>⚙️ Account</h2><span class="tag">08</span></div>
+
+        <label class="fld">Current PIN
+          <input type="password" id="pwCur" class="pin-input" inputmode="numeric" maxlength="4" placeholder="••••">
+        </label>
+        <label class="fld">New PIN
+          <input type="password" id="pwNew" class="pin-input" inputmode="numeric" maxlength="4" placeholder="••••">
+        </label>
+        <label class="fld">Confirm new PIN
+          <input type="password" id="pwNew2" class="pin-input" inputmode="numeric" maxlength="4" placeholder="••••">
+        </label>
+        <button class="btn btn-primary btn-full" id="btnPw" type="button" style="margin-top:14px">🔑 Change PIN</button>
+
+        <div class="divider"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-sm" id="btnExport" type="button">⤓ Export backup</button>
+          <button class="btn btn-sm" id="btnClear" type="button">🧹 Clear projects</button>
+          <button class="btn btn-sm btn-danger" id="btnDelete" type="button">🗑 Delete account</button>
+        </div>
+
+        <p class="note">
+          Everything runs offline in your browser. Clearing browser data removes your
+          account and projects permanently — export a backup first.
+        </p>
+      </div>
+    </div>
+
+    <p class="footnote">RGB Studio · single-file app</p>
+  </section>
+</main>
+
+<!-- ===================== SHARED VIEWER ===================== -->
+<div class="viewer" id="viewer" hidden>
+  <div class="viewer-bar">
+    <b id="viewerName">Shared project</b>
+    <div class="viewer-acts">
+      <button class="btn btn-sm" id="viewerNew" type="button" title="Open standalone">↗</button>
+      <button class="btn btn-sm" id="viewerDl" type="button" title="Download">⤓</button>
+      <button class="btn btn-sm" id="viewerBack" type="button">✕ Close</button>
+    </div>
+  </div>
+  <iframe id="viewerFrame" title="Shared project"
+    sandbox="allow-scripts allow-forms allow-modals allow-popups allow-pointer-lock allow-presentation"></iframe>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+
+/* ============================================================
+   0 · HELPERS
+   ============================================================ */
+var $  = function (s, r) { return (r || document).querySelector(s); };
+var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
+  });
+}
+function fmtBytes(n) {
+  if (!n) return '0 B';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1048576).toFixed(2) + ' MB';
+}
+function fmtDate(ts) {
+  try {
+    return new Date(ts).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+  } catch (e) { return '—'; }
+}
+function randId(n) {
+  n = n || 10;
+  var chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+  var out = '', arr = new Uint8Array(n);
+  if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(arr);
+  else for (var i = 0; i < n; i++) arr[i] = Math.floor(Math.random() * 256);
+  for (var j = 0; j < n; j++) out += chars[arr[j] % chars.length];
+  return out;
+}
+function toast(msg, type) {
+  var box = $('#toasts');
+  var el = document.createElement('div');
+  el.className = 'toast ' + (type || '');
+  el.textContent = msg;
+  box.appendChild(el);
+  setTimeout(function () {
+    el.classList.add('out');
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 220);
+  }, 2600);
+}
+
+/* ============================================================
+   1 · STORAGE
+   ============================================================ */
+var K = {
+  users:    'rgbstudio.users.v2',
+  session:  'rgbstudio.session.v2',
+  projects: 'rgbstudio.projects.v2',
+  prefs:    'rgbstudio.prefs.v2'
+};
+var store = {
+  get: function (k, d) {
+    try { var r = localStorage.getItem(k); return r ? JSON.parse(r) : d; }
+    catch (e) { return d; }
+  },
+  set: function (k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+    catch (e) { toast('Storage full — delete a project.', 'err'); return false; }
+  },
+  del: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+function getUsers()     { return store.get(K.users, {}); }
+function saveUsers(u)   { return store.set(K.users, u); }
+function getSession()   { return store.get(K.session, null); }
+function setSession(e)  { return store.set(K.session, e); }
+function clearSession() { store.del(K.session); }
+
+function currentUser() {
+  var email = getSession();
+  if (!email) return null;
+  var rec = getUsers()[email];
+  if (!rec) return null;
+  rec = Object.assign({}, rec);
+  rec.email = email;
+  return rec;
+}
+function allProjects() { return store.get(K.projects, {}); }
+function myProjects() {
+  var em = getSession();
+  return em ? (allProjects()[em] || []) : [];
+}
+function saveMyProjects(list) {
+  var em = getSession();
+  if (!em) return false;
+  var all = allProjects();
+  all[em] = list;
+  return store.set(K.projects, all);
+}
+
+/* ============================================================
+   2 · VALIDATION
+   ============================================================ */
+/* Accepts ANY email-shaped string: a@b, user@localhost, etc. */
+function validEmail(email) {
+  return /^[^\s@]+@[^\s@]+$/.test(String(email).trim());
+}
+function validPin(pin) {
+  return /^\d{4}$/.test(String(pin));
+}
+
+/* ============================================================
+   3 · CRYPTO — SHA-256 with salt (+ safe fallback)
+   ============================================================ */
+function bufToHex(buf) {
+  var b = new Uint8Array(buf), out = '';
+  for (var i = 0; i < b.length; i++) out += b[i].toString(16).padStart(2, '0');
+  return out;
+}
+function simpleHash(str) {
+  var h1 = 0x811c9dc5, h2 = 0x01000193, h3 = 0x9e3779b9, h4 = 0x85ebca6b;
+  for (var i = 0; i < str.length; i++) {
+    var c = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+    h2 = Math.imul(h2 ^ c, 2246822519) >>> 0;
+    h3 = Math.imul(h3 ^ c, 3266489917) >>> 0;
+    h4 = Math.imul(h4 ^ c, 668265263) >>> 0;
+  }
+  return 'f' + [h1, h2, h3, h4].map(function (x) {
+    return x.toString(16).padStart(8, '0');
+  }).join('');
+}
+async function hashPin(pin, salt) {
+  var input = salt + '::' + pin;
+  if (window.crypto && crypto.subtle && crypto.subtle.digest) {
+    try {
+      var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+      return 's' + bufToHex(buf);
+    } catch (e) { /* fall through */ }
+  }
+  return simpleHash(input);
+}
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  var d = 0;
+  for (var i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+
+/* ============================================================
+   4 · PACK / UNPACK  (gzip + base64url)
+   ============================================================ */
+function bytesToB64url(bytes) {
+  var bin = '', CH = 0x8000;
+  for (var i = 0; i < bytes.length; i += CH) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + CH, bytes.length)));
+  }
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlToBytes(s) {
+  s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  var bin = atob(s);
+  var out = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+async function packHtml(html) {
+  var bytes = new TextEncoder().encode(html);
+  if (typeof CompressionStream !== 'undefined') {
+    try {
+      var cs = new CompressionStream('gzip');
+      var w = cs.writable.getWriter();
+      w.write(bytes); w.close();
+      var buf = await new Response(cs.readable).arrayBuffer();
+      return 'z' + bytesToB64url(new Uint8Array(buf));
+    } catch (e) { /* fall through */ }
+  }
+  return 'd' + bytesToB64url(bytes);
+}
+async function unpackHtml(payload) {
+  var mode = payload.charAt(0);
+  var data = b64urlToBytes(payload.slice(1));
+  if (mode === 'z') {
+    if (typeof DecompressionStream === 'undefined') throw new Error('no-decompression');
+    var ds = new DecompressionStream('gzip');
+    var w = ds.writable.getWriter();
+    w.write(data); w.close();
+    var buf = await new Response(ds.readable).arrayBuffer();
+    return new TextDecoder().decode(buf);
+  }
+  return new TextDecoder().decode(data);
+}
+
+/* ============================================================
+   5 · STATE
+   ============================================================ */
+var state = {
+  user: null,
+  pendingHtml: null,
+  current: null,
+  blobUrl: null
+};
+var busy = false;
+
+function setBusy(btn, on, label) {
+  if (!btn) return;
+  if (on) {
+    btn.dataset.orig = btn.textContent;
+    btn.textContent = label || 'Working…';
+    btn.disabled = true;
+  } else {
+    btn.textContent = btn.dataset.orig || btn.textContent;
+    btn.disabled = false;
+  }
+}
+
+/* ============================================================
+   6 · PREFERENCES
+   ============================================================ */
+var ACCENTS = ['#22d3ee', '#a855f7', '#ec4899', '#34d399', '#f59e0b', '#f87171'];
+
+function applyPrefs() {
+  var p = store.get(K.prefs, {});
+  var accent = p.accent || ACCENTS[0];
+  var anim   = p.anim !== false;
+
+  document.documentElement.style.setProperty('--accent', accent);
+  document.body.classList.toggle('no-rgb', !anim);
+
+  $$('.swatch').forEach(function (b) {
+    b.setAttribute('aria-pressed', String(b.dataset.color === accent));
+  });
+  var ka = $('#knobAnim');
+  if (ka) ka.setAttribute('aria-checked', String(anim));
+}
+function setPref(key, value) {
+  var p = store.get(K.prefs, {});
+  p[key] = value;
+  store.set(K.prefs, p);
+  applyPrefs();
+}
+function buildSwatches() {
+  var box = $('#swatches');
+  if (!box) return;
+  box.innerHTML = '';
+  ACCENTS.forEach(function (c) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'swatch';
+    b.dataset.color = c;
+    b.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-label', 'Accent ' + c);
+    b.style.background = 'linear-gradient(135deg,' + c + ',#ffffff33)';
+    b.addEventListener('click', function () { setPref('accent', c); });
+    box.appendChild(b);
+  });
+}
+
+/* ============================================================
+   7 · AVATAR
+   ============================================================ */
+function initials(u) {
+  var src = (u && (u.name || u.email)) || '?';
+  return (src.trim().charAt(0) || '?').toUpperCase();
+}
+function avatarMarkup(u) {
+  if (u && u.avatar) return '<img src="' + u.avatar + '" alt="Profile picture">';
+  return '<div class="avatar-letter">' + esc(initials(u)) + '</div>';
+}
+function resizeImage(file, size) {
+  size = size || 176;
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onerror = function () { reject(new Error('read')); };
+    reader.onload = function (e) {
+      var img = new Image();
+      img.onerror = function () { reject(new Error('decode')); };
+      img.onload = function () {
+        try {
+          var s = Math.min(img.width, img.height);
+          var cv = document.createElement('canvas');
+          cv.width = cv.height = size;
+          var ctx = cv.getContext('2d');
+          ctx.drawImage(img,
+            (img.width - s) / 2, (img.height - s) / 2, s, s,
+            0, 0, size, size);
+          resolve(cv.toDataURL('image/jpeg', 0.82));
+        } catch (err) { reject(err); }
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ============================================================
+   8 · PIN input helpers (strip non-digits, auto-advance)
+   ============================================================ */
+function attachPinInput(el) {
+  if (!el) return;
+  el.addEventListener('input', function () {
+    var v = this.value.replace(/\D/g, '').slice(0, 4);
+    if (v !== this.value) this.value = v;
+  });
+  el.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && this.form) {
+      /* let the form submit naturally */
+    }
+  });
+}
+
+/* ============================================================
+   9 · AUTH
+   ============================================================ */
+function authMsg(text, type) {
+  var el = $('#authMsg');
+  el.textContent = text || '';
+  el.className = 'msg ' + (type || '');
+}
+
+function bindAuth() {
+  $('#tabLogin').addEventListener('click', function () {
+    $('#tabLogin').setAttribute('aria-selected', 'true');
+    $('#tabSignup').setAttribute('aria-selected', 'false');
+    $('#formLogin').hidden = false;
+    $('#formSignup').hidden = true;
+    authMsg('');
+  });
+  $('#tabSignup').addEventListener('click', function () {
+    $('#tabSignup').setAttribute('aria-selected', 'true');
+    $('#tabLogin').setAttribute('aria-selected', 'false');
+    $('#formSignup').hidden = false;
+    $('#formLogin').hidden = true;
+    authMsg('');
+  });
+
+  /* PIN input sanitisation */
+  ['#liPin', '#suPin', '#suPin2', '#pwCur', '#pwNew', '#pwNew2'].forEach(function (sel) {
+    attachPinInput($(sel));
+  });
+
+  /* ---------- SIGN UP ---------- */
+  $('#formSignup').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (busy) return;
+
+    var name  = $('#suName').value.trim();
+    var email = $('#suEmail').value.trim().toLowerCase();
+    var p1    = $('#suPin').value;
+    var p2    = $('#suPin2').value;
+
+    if (!email) return authMsg('Please enter an email address.', 'err');
+    if (!validEmail(email)) return authMsg('Please enter a valid email (e.g. you@site.com).', 'err');
+    if (!validPin(p1)) return authMsg('PIN must be exactly 4 digits.', 'err');
+    if (p1 !== p2) return authMsg('PINs do not match.', 'err');
+    if (getUsers()[email]) return authMsg('An account with this email already exists.', 'err');
+
+    busy = true;
+    var btn = $('#formSignup button[type=submit]');
+    setBusy(btn, true, 'Creating…');
+
+    try {
+      var salt = randId(20);
+      var hash = await hashPin(p1, salt);
+
+      var u = getUsers();
+      if (u[email]) { authMsg('Account already exists.', 'err'); return; }
+
+      u[email] = {
+        email: email,
+        name: (name || email.split('@')[0]).slice(0, 32),
+        avatar: '',
+        salt: salt,
+        hash: hash,
+        createdAt: Date.now()
+      };
+      saveUsers(u);
+      setSession(email);
+
+      $('#formSignup').reset();
+      authMsg('Account created ✓', 'ok');
+      enterApp();
+      toast('Welcome to RGB Studio!', 'ok');
+    } catch (err) {
+      authMsg('Something went wrong. Please try again.', 'err');
+    } finally {
+      busy = false;
+      setBusy(btn, false);
+    }
+  });
+
+  /* ---------- LOGIN ---------- */
+  $('#formLogin').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (busy) return;
+
+    var email = $('#liEmail').value.trim().toLowerCase();
+    var pin   = $('#liPin').value;
+
+    if (!email) return authMsg('Please enter your email address.', 'err');
+    if (!validPin(pin)) return authMsg('PIN must be exactly 4 digits.', 'err');
+
+    var rec = getUsers()[email];
+    if (!rec) return authMsg('No account found with this email.', 'err');
+
+    busy = true;
+    var btn = $('#formLogin button[type=submit]');
+    setBusy(btn, true, 'Checking…');
+
+    try {
+      var hash = await hashPin(pin, rec.salt);
+      if (!safeEqual(hash, rec.hash)) {
+        authMsg('Incorrect PIN.', 'err');
+        return;
+      }
+      setSession(email);
+      $('#formLogin').reset();
+      authMsg('Signed in ✓', 'ok');
+      enterApp();
+      toast('Signed in', 'ok');
+    } catch (err) {
+      authMsg('Something went wrong. Please try again.', 'err');
+    } finally {
+      busy = false;
+      setBusy(btn, false);
+    }
+  });
+}
+
+/* ============================================================
+   10 · APP ENTRY / RENDER
+   ============================================================ */
+function enterApp() {
+  state.user = currentUser();
+  if (!state.user) return showAuth();
+
+  $('#authView').hidden = true;
+  $('#appView').hidden = false;
+
+  renderTopbar();
+  renderProfile();
+  renderProjects();
+  renderStats();
+}
+
+function showAuth() {
+  state.user = null;
+  state.current = null;
+  $('#appView').hidden = true;
+  $('#authView').hidden = false;
+  $('#topbarRight').innerHTML = '';
+}
+
+function logout() {
+  clearSession();
+  state.user = null;
+  state.current = null;
+  state.pendingHtml = null;
+  if (state.blobUrl) { URL.revokeObjectURL(state.blobUrl); state.blobUrl = null; }
+  resetLinkBox();
+  resetPreview();
+  showAuth();
+  toast('Signed out');
+}
+
+function renderTopbar() {
+  var u = state.user;
+  if (!u) { $('#topbarRight').innerHTML = ''; return; }
+
+  var av = u.avatar
+    ? '<img src="' + u.avatar + '" alt="" class="av" style="object-fit:cover">'
+    : '<span class="av">' + esc(initials(u)) + '</span>';
+
+  $('#topbarRight').innerHTML =
+    '<div class="user-chip">' + av +
+      '<span class="nm">' + esc(u.name || u.email) + '</span>' +
+      '<button class="btn btn-sm exit" id="btnLogout" type="button">Exit</button>' +
+    '</div>';
+
+  $('#btnLogout').addEventListener('click', logout);
+}
+
+function renderProfile() {
+  var u = state.user;
+  if (!u) return;
+  $('#avatarRing').innerHTML = avatarMarkup(u);
+  $('#pfName').value = u.name || '';
+  $('#pfEmail').value = u.email;
+}
+
+/* ============================================================
+   11 · PROFILE ACTIONS
+   ============================================================ */
+function bindProfile() {
+  $('#btnAvatar').addEventListener('click', function () { $('#avatarInput').click(); });
+
+  $('#avatarInput').addEventListener('change', async function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type)) return toast('Please choose an image.', 'err');
+    if (f.size > 8 * 1024 * 1024) return toast('Image too large (max 8 MB).', 'err');
+
+    try {
+      var dataUrl = await resizeImage(f, 176);
+      var u = getUsers();
+      u[state.user.email].avatar = dataUrl;
+      if (!saveUsers(u)) return;
+      state.user = currentUser();
+      renderProfile();
+      renderTopbar();
+      toast('Profile picture updated ✓', 'ok');
+    } catch (err) {
+      toast('Could not process that image.', 'err');
+    }
+  });
+
+  $('#btnSaveProfile').addEventListener('click', function () {
+    var name = $('#pfName').value.trim();
+    if (!name) return toast('Display name cannot be empty.', 'err');
+    if (name.length > 32) return toast('Name too long (max 32).', 'err');
+    var u = getUsers();
+    u[state.user.email].name = name;
+    if (!saveUsers(u)) return;
+    state.user = currentUser();
+    renderProfile();
+    renderTopbar();
+    toast('Profile saved ✓', 'ok');
+  });
+}
+
+/* ============================================================
+   12 · UPLOAD / PUBLISH
+   ============================================================ */
+var MAX_HTML = 2 * 1024 * 1024;
+
+function readFileText(file) {
+  if (file.text) return file.text();
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () { resolve(String(r.result)); };
+    r.onerror = function () { reject(new Error('read')); };
+    r.readAsText(file);
+  });
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  var isHtml = /\.html?$/i.test(file.name) || /text\/html/.test(file.type);
+  if (!isHtml) { toast('Please choose an .html file.', 'err'); return; }
+  if (file.size > MAX_HTML) { toast('File too large (max 2 MB).', 'err'); return; }
+
+  try {
+    var text = await readFileText(file);
+    state.pendingHtml = text;
+    if (!$('#projName').value.trim()) {
+      $('#projName').value = file.name.replace(/\.html?$/i, '').slice(0, 48);
+    }
+    setPubStatus('✅ Loaded "' + file.name + '" · ' + fmtBytes(file.size) + ' — tap Publish.', 'ok');
+    toast('File loaded ✓', 'ok');
+  } catch (e) {
+    toast('Could not read that file.', 'err');
+  }
+}
+
+function setPubStatus(text, kind) {
+  var el = $('#pubStatus');
+  el.textContent = text || '';
+  el.style.color = kind === 'ok' ? 'var(--ok)'
+                 : kind === 'err' ? 'var(--err)'
+                 : 'var(--dim)';
+}
+
+var SAMPLE = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n' +
+'<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
+'<title>Hello from RGB Studio</title>\n<style>\n' +
+'  body{margin:0;min-height:100vh;display:grid;place-items:center;\n' +
+'    background:#07080c;color:#e8ecf4;\n' +
+'    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-align:center}\n' +
+'  h1{font-size:clamp(24px,7vw,42px);margin:0 0 10px;\n' +
+'    background:linear-gradient(90deg,#22d3ee,#a855f7,#ec4899);\n' +
+'    -webkit-background-clip:text;background-clip:text;color:transparent}\n' +
+'  p{color:#8a94a6;max-width:420px;padding:0 20px;line-height:1.6}\n' +
+'  .badge{margin-top:18px;display:inline-block;padding:8px 16px;border-radius:99px;\n' +
+'    border:1px solid #1e2531;font-size:13px;color:#22d3ee}\n' +
+'</style>\n</head>\n<body>\n<div>\n' +
+'  <h1>It works! 🚀</h1>\n' +
+'  <p>This page was uploaded to RGB Studio and is served from a live URL.\n' +
+'  Open it on any device — it just works.</p>\n' +
+'  <div class="badge">Hosted with RGB Studio</div>\n' +
+'</div>\n</body>\n</html>';
+
+function bindUpload() {
+  var drop = $('#drop');
+  var fi = $('#fileInput');
+
+  drop.addEventListener('click', function () { fi.click(); });
+  drop.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fi.click(); }
+  });
+  fi.addEventListener('change', function (e) {
+    handleFile(e.target.files && e.target.files[0]);
+    e.target.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    handleFile(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+
+  $('#btnPaste').addEventListener('click', function () {
+    var w = $('#codeWrap');
+    w.hidden = !w.hidden;
+    if (!w.hidden) {
+      $('#codeArea').focus();
+      $('#btnPaste').textContent = '✕ Close editor';
+    } else {
+      $('#btnPaste').textContent = '⌨️ Paste code instead';
+    }
+  });
+
+  $('#btnSample').addEventListener('click', function () {
+    $('#codeWrap').hidden = false;
+    $('#codeArea').value = SAMPLE;
+    if (!$('#projName').value.trim()) $('#projName').value = 'My first page';
+    setPubStatus('✨ Sample loaded — tap Publish.', 'ok');
+  });
+
+  $('#btnPublish').addEventListener('click', publish);
+}
+
+async function publish() {
+  if (!state.user || busy) return;
+
+  var html = '';
+  var pasted = $('#codeArea').value.trim();
+  if (pasted) html = pasted;
+  else if (state.pendingHtml) html = state.pendingHtml;
+
+  if (!html.trim()) return toast('Choose a file or paste HTML first.', 'err');
+  if (!/<\/?[a-z][\s\S]*>/i.test(html)) return toast('That does not look like HTML.', 'err');
+
+  var size = new Blob([html]).size;
+  if (size > MAX_HTML) return toast('Project too large (max 2 MB).', 'err');
+
+  var name = ($('#projName').value.trim() || 'Untitled project').slice(0, 48);
+
+  busy = true;
+  var btn = $('#btnPublish');
+  setBusy(btn, true, 'Publishing…');
+  setPubStatus('⏳ Packing project…');
+
+  try {
+    var project = {
+      id: randId(9),
+      name: name,
+      html: html,
+      size: size,
+      createdAt: Date.now()
+    };
+
+    var list = myProjects();
+    list.unshift(project);
+    if (list.length > 30) list.length = 30;
+    if (!saveMyProjects(list)) throw new Error('storage');
+
+    await showLink(project);
+    renderProjects();
+    renderStats();
+    showPreview(project);
+
+    setPubStatus('✅ Published "' + name + '"', 'ok');
+    $('#codeArea').value = '';
+    state.pendingHtml = null;
+
+    setTimeout(function () {
+      var el = $('#linkEmpty');
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+
+    toast('Live URL generated ✓', 'ok');
+  } catch (err) {
+    if (String(err && err.message) === 'storage') {
+      toast('Storage full — delete a project first.', 'err');
+      setPubStatus('❌ Storage full.', 'err');
+    } else {
+      toast('Publishing failed. Please try again.', 'err');
+      setPubStatus('❌ Something went wrong.', 'err');
+    }
+  } finally {
+    busy = false;
+    setBusy(btn, false);
+  }
+}
+
+/* ============================================================
+   13 · LIVE URL GENERATION
+   ============================================================ */
+async function showLink(project) {
+  state.current = project;
+
+  if (state.blobUrl) URL.revokeObjectURL(state.blobUrl);
+  state.blobUrl = URL.createObjectURL(new Blob([project.html], { type: 'text/html' }));
+
+  var payload = await packHtml(project.html);
+  var base = location.href.split('#')[0];
+  /* Unique per-project URL: includes id + name + encoded payload */
+  var url = base + '#p=' + project.id +
+            '&n=' + encodeURIComponent(project.name) +
+            '&v=' + payload;
+
+  $('#linkEmpty').hidden = true;
+  $('#linkBox').hidden = false;
+  $('#liveUrl').value = url;
+
+  $('#pillSize').textContent = fmtBytes(project.size);
+
+  var len = url.length;
+  var lenPill = $('#pillLen');
+  lenPill.textContent = len > 1024 ? 'URL ' + (len / 1024).toFixed(1) + ' KB' : 'URL ' + len + ' chars';
+  lenPill.className = 'pill ' + (len < 8000 ? 'ok' : len < 60000 ? 'warn' : 'err');
+
+  var isFile = location.protocol === 'file:';
+  var hostPill = $('#pillHost');
+  hostPill.textContent = isFile ? 'Local file mode' : 'Web URL';
+  hostPill.className = 'pill ' + (isFile ? 'warn' : 'ok');
+
+  var parts = [];
+  if (isFile) {
+    parts.push('⚠️ Running from a local file — the link only works on this device. ' +
+      'Upload <b>index.html</b> to any web host for a truly shareable URL.');
+  } else {
+    parts.push('✅ This link works on any device — the whole project is encoded inside it. ' +
+      'Project ID: <b>' + esc(project.id) + '</b>');
+  }
+  if (len > 60000) {
+    parts.push('⚠️ The URL is very long and some chat apps may truncate it. ' +
+      'Use <b>Download</b> or host it on a server for large projects.');
+  } else if (len > 8000) {
+    parts.push('ℹ️ Long URL — copy & paste is more reliable than link previews.');
+  }
+  $('#linkNote').innerHTML = parts.join('<br>');
+}
+
+function resetLinkBox() {
+  $('#linkEmpty').hidden = false;
+  $('#linkBox').hidden = true;
+  $('#liveUrl').value = '';
+}
+
+/* ============================================================
+   14 · LINK ACTIONS
+   ============================================================ */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-2000px';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    toast('Copied ✓', 'ok');
+  } catch (e) {
+    var inp = $('#liveUrl');
+    inp.focus();
+    inp.select();
+    toast('Long-press the field to copy.', 'warn');
+  }
+}
+
+function bindLinkActions() {
+  $('#btnCopy').addEventListener('click', function () {
+    var v = $('#liveUrl').value;
+    if (v) copyText(v);
+  });
+  $('#btnOpen').addEventListener('click', function () {
+    var v = $('#liveUrl').value;
+    if (!v) return;
+    var w = window.open(v, '_blank');
+    if (!w) toast('Popup blocked — copy the link instead.', 'warn');
+  });
+  $('#btnShare').addEventListener('click', async function () {
+    var v = $('#liveUrl').value;
+    if (!v) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: (state.current && state.current.name) || 'My HTML project',
+          text: 'Check out my hosted page:',
+          url: v
+        });
+      } catch (e) { /* cancelled */ }
+    } else {
+      copyText(v);
+    }
+  });
+  $('#btnQuick').addEventListener('click', function () {
+    if (!state.blobUrl) return;
+    var w = window.open(state.blobUrl, '_blank');
+    if (!w) toast('Popup blocked.', 'warn');
+  });
+  $('#btnDownload').addEventListener('click', function () {
+    if (!state.current) return;
+    downloadHtml(state.current.html, state.current.name);
+  });
+}
+
+function downloadHtml(html, name) {
+  var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = (name || 'project').replace(/[^\w\-]+/g, '_').slice(0, 40) + '.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+  toast('Downloaded ✓', 'ok');
+}
+
+/* ============================================================
+   15 · PROJECT LIST
+   ============================================================ */
+function renderProjects() {
+  var box = $('#plist');
+  var list = myProjects();
+
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">No projects yet. Upload one above to get a live link.</div>';
+    return;
+  }
+
+  var frag = document.createDocumentFragment();
+  list.forEach(function (p) {
+    var item = document.createElement('div');
+    item.className = 'pitem';
+    item.dataset.id = p.id;
+    item.innerHTML =
+      '<div class="pthumb">📄</div>' +
+      '<div class="pmeta">' +
+        '<b>' + esc(p.name) + '</b>' +
+        '<span>' + fmtBytes(p.size) + ' · ' + fmtDate(p.createdAt) + ' · ' + esc(p.id) + '</span>' +
+      '</div>' +
+      '<div class="pacts">' +
+        '<button class="btn btn-sm" data-act="view" type="button" title="Preview">👁</button>' +
+        '<button class="btn btn-sm" data-act="copy" type="button" title="Copy link">🔗</button>' +
+        '<button class="btn btn-sm btn-danger" data-act="del" type="button" title="Delete">🗑</button>' +
+      '</div>';
+    frag.appendChild(item);
+  });
+
+  box.innerHTML = '';
+  box.appendChild(frag);
+}
+
+function bindProjectList() {
+  $('#plist').addEventListener('click', async function (e) {
+    var btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    var item = btn.closest('.pitem');
+    if (!item) return;
+
+    var id = item.dataset.id;
+    var proj = myProjects().filter(function (x) { return x.id === id; })[0];
+    if (!proj) return;
+
+    var act = btn.dataset.act;
+
+    if (act === 'view') {
+      await showLink(proj);
+      showPreview(proj);
+      var el = $('#prevShell');
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else if (act === 'copy') {
+      var payload = await packHtml(proj.html);
+      var url = location.href.split('#')[0] + '#p=' + proj.id +
+                '&n=' + encodeURIComponent(proj.name) + '&v=' + payload;
+      copyText(url);
+    } else if (act === 'del') {
+      if (!confirm('Delete "' + proj.name + '"? This cannot be undone.')) return;
+      var next = myProjects().filter(function (x) { return x.id !== id; });
+      saveMyProjects(next);
+      if (state.current && state.current.id === id) {
+        state.current = null;
+        resetLinkBox();
+        resetPreview();
+      }
+      renderProjects();
+      renderStats();
+      toast('Project deleted');
+    }
+  });
+}
+
+/* ============================================================
+   16 · PREVIEW
+   ============================================================ */
+function showPreview(project) {
+  if (!project) return;
+  state.current = project;
+  $('#prevEmpty').hidden = true;
+  $('#prevShell').hidden = false;
+  var frame = $('#prevIframe');
+  if (frame.getAttribute('srcdoc') !== project.html) {
+    frame.setAttribute('srcdoc', project.html);
+  }
+}
+function resetPreview() {
+  $('#prevEmpty').hidden = false;
+  $('#prevShell').hidden = true;
+  $('#prevIframe').removeAttribute('srcdoc');
+}
+function bindPreview() {
+  $('#devMobile').addEventListener('click', function () {
+    $('#devMobile').setAttribute('aria-pressed', 'true');
+    $('#devDesktop').setAttribute('aria-pressed', 'false');
+    $('#prevFrame').classList.add('mobile');
+  });
+  $('#devDesktop').addEventListener('click', function () {
+    $('#devDesktop').setAttribute('aria-pressed', 'true');
+    $('#devMobile').setAttribute('aria-pressed', 'false');
+    $('#prevFrame').classList.remove('mobile');
+  });
+}
+
+/* ============================================================
+   17 · STATS
+   ============================================================ */
+function renderStats() {
+  var list = myProjects();
+  var total = list.reduce(function (a, p) { return a + (p.size || 0); }, 0);
+
+  $('#stProjects').textContent = list.length;
+  $('#stSize').textContent = fmtBytes(total);
+  $('#stLinks').textContent = list.length;
+
+  if (state.user && state.user.createdAt) {
+    var days = Math.max(0, Math.floor((Date.now() - state.user.createdAt) / 86400000));
+    $('#stAge').textContent = days + 'd';
+  } else {
+    $('#stAge').textContent = '0d';
+  }
+
+  var used = 0;
+  try {
+    used = (localStorage.getItem(K.projects) || '').length +
+           (localStorage.getItem(K.users) || '').length;
+  } catch (e) {}
+  $('#storageNote').textContent =
+    'Local storage used: ~' + fmtBytes(used) + ' of roughly 5 MB.';
+}
+
+/* ============================================================
+   18 · APPEARANCE BINDINGS
+   ============================================================ */
+function bindAppearance() {
+  $('#knobAnim').addEventListener('click', function () {
+    var on = $('#knobAnim').getAttribute('aria-checked') !== 'true';
+    setPref('anim', on);
+  });
+}
+
+/* ============================================================
+   19 · ACCOUNT
+   ============================================================ */
+function bindAccount() {
+  $('#btnPw').addEventListener('click', async function () {
+    if (busy) return;
+    var cur  = $('#pwCur').value;
+    var nw   = $('#pwNew').value;
+    var nw2  = $('#pwNew2').value;
+
+    if (!validPin(cur)) return toast('Enter your current 4-digit PIN.', 'err');
+    if (!validPin(nw))  return toast('New PIN must be exactly 4 digits.', 'err');
+    if (nw !== nw2)     return toast('New PINs do not match.', 'err');
+
+    busy = true;
+    var btn = $('#btnPw');
+    setBusy(btn, true, 'Updating…');
+
+    try {
+      var u = getUsers();
+      var rec = u[state.user.email];
+      var curHash = await hashPin(cur, rec.salt);
+
+      if (!safeEqual(curHash, rec.hash)) {
+        toast('Current PIN is incorrect.', 'err');
+        return;
+      }
+
+      var salt = randId(20);
+      var hash = await hashPin(nw, salt);
+      u = getUsers();
+      u[state.user.email].salt = salt;
+      u[state.user.email].hash = hash;
+      saveUsers(u);
+
+      $('#pwCur').value = '';
+      $('#pwNew').value = '';
+      $('#pwNew2').value = '';
+      toast('PIN updated ✓', 'ok');
+    } catch (e) {
+      toast('Could not update PIN.', 'err');
+    } finally {
+      busy = false;
+      setBusy(btn, false);
+    }
+  });
+
+  $('#btnExport').addEventListener('click', function () {
+    var payload = {
+      app: 'RGB Studio',
+      exportedAt: new Date().toISOString(),
+      account: {
+        email: state.user.email,
+        name: state.user.name,
+        createdAt: state.user.createdAt
+      },
+      projects: myProjects()
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'rgbstudio-backup-' + Date.now() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    toast('Backup downloaded ✓', 'ok');
+  });
+
+  $('#btnClear').addEventListener('click', function () {
+    if (!confirm('Delete ALL your projects? This cannot be undone.')) return;
+    saveMyProjects([]);
+    state.current = null;
+    resetLinkBox();
+    resetPreview();
+    renderProjects();
+    renderStats();
+    toast('All projects cleared');
+  });
+
+  $('#btnDelete').addEventListener('click', function () {
+    if (!confirm('Permanently delete your account and every project?')) return;
+    if (!confirm('This cannot be undone. Continue?')) return;
+
+    var em = state.user.email;
+    var u = getUsers();
+    delete u[em];
+    saveUsers(u);
+
+    var all = allProjects();
+    delete all[em];
+    store.set(K.projects, all);
+
+    clearSession();
+    state.user = null;
+    showAuth();
+    toast('Account deleted');
+  });
+}
+
+/* ============================================================
+   20 · SHARED VIEWER (hash links)
+   ============================================================ */
+var viewerHtml = '';
+
+function openViewer(html, name) {
+  viewerHtml = html;
+  $('#viewerName').textContent = name || 'Shared project';
+  $('#viewerFrame').setAttribute('srcdoc', html);
+  $('#viewer').hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+function closeViewer() {
+  $('#viewer').hidden = true;
+  $('#viewerFrame').removeAttribute('srcdoc');
+  document.body.style.overflow = '';
+}
+function bindViewer() {
+  $('#viewerBack').addEventListener('click', function () {
+    closeViewer();
+    if (location.hash) {
+      try { history.replaceState(null, '', location.href.split('#')[0]); } catch (e) {}
+    }
+  });
+  $('#viewerNew').addEventListener('click', function () {
+    if (!viewerHtml) return;
+    var blob = new Blob([viewerHtml], { type: 'text/html' });
+    var url = URL.createObjectURL(blob);
+    var w = window.open(url, '_blank');
+    if (!w) toast('Popup blocked.', 'warn');
+    setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+  });
+  $('#viewerDl').addEventListener('click', function () {
+    if (!viewerHtml) return;
+    downloadHtml(viewerHtml, $('#viewerName').textContent || 'project');
+  });
+}
+
+async function checkSharedHash() {
+  var hash = location.hash.slice(1);
+  if (!hash) return false;
+
+  var params;
+  try { params = new URLSearchParams(hash); }
+  catch (e) { return false; }
+
+  var payload = params.get('v');
+  if (!payload || payload.length < 4) return false;
+
+  var name = params.get('n') || 'Shared project';
+  var pid  = params.get('p');
+
+  try {
+    var html = await unpackHtml(payload);
+    if (!html || !html.trim()) return false;
+    var label = name + (pid ? ' · ' + pid : '');
+    openViewer(html, label);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/* ============================================================
+   21 · BOOT
+   ============================================================ */
+async function boot() {
+  buildSwatches();
+  applyPrefs();
+
+  bindAuth();
+  bindProfile();
+  bindUpload();
+  bindLinkActions();
+  bindProjectList();
+  bindPreview();
+  bindAppearance();
+  bindAccount();
+  bindViewer();
+
+  /* shared-link mode takes over the whole screen */
+  var isShared = await checkSharedHash();
+  if (isShared) return;
+
+  if (currentUser()) enterApp();
+  else showAuth();
+
+  /* keep session in sync across tabs */
+  window.addEventListener('storage', function (e) {
+    if (e.key === K.session || e.key === K.users) {
+      if (!currentUser() && state.user) logout();
+      else if (currentUser() && !state.user) enterApp();
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+
+})();
+</script>
+</body>
+</html>
